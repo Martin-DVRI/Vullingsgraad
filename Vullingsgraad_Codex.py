@@ -230,10 +230,10 @@ kabels = {
 }
 
 
-def update_diameter(i):
-    categorie = st.session_state[f'kabel_categorie_{i}']
-    soort = st.session_state[f'kabel_soort_{i}']
-    st.session_state[f'diameter_{i}'] = kabels[categorie][soort]
+#def update_diameter(i):
+#    categorie = st.session_state[f'kabel_categorie_{i}']
+ #   soort = st.session_state[f'kabel_soort_{i}']
+  #  st.session_state[f'diameter_{i}'] = kabels[categorie][soort]
 
 
 # Header 'Kokerkeuze' en dropdown
@@ -264,68 +264,59 @@ oppervlaktes_kabels = []
 aantallen = []
 
 # Dynamisch genereren van inputregels
-st.header("Kabels")
+st.header("Kabels")        #Onderstaande loop via Codex gegenereerd
+
+def sync_kabel_soort(i):
+    """Zorgt dat kabel_soort geldig is binnen gekozen categorie"""
+    cat = st.session_state[f'kabel_categorie_{i}']
+    beschikbare = list(kabels[cat].keys())
+
+    if st.session_state.get(f'kabel_soort_{i}') not in beschikbare:
+        st.session_state[f'kabel_soort_{i}'] = beschikbare[0]
+
+
+def sync_diameter(i):
+    """Zet diameter op basis van categorie + kabelsoort"""
+    cat = st.session_state[f'kabel_categorie_{i}']
+    soort = st.session_state[f'kabel_soort_{i}']
+    st.session_state[f'diameter_{i}'] = kabels[cat][soort]
+
 for i in range(int(num_inputs)):
     st.markdown(f"#### Input {i+1}")
 
-    # Initialiseer session state voor deze rij
+    # Init defaults (éénmalig per rij)
     if f'kabel_categorie_{i}' not in st.session_state:
         st.session_state[f'kabel_categorie_{i}'] = list(kabels.keys())[0]
 
     if f'kabel_soort_{i}' not in st.session_state:
-        eerste_categorie = st.session_state[f'kabel_categorie_{i}']
-        st.session_state[f'kabel_soort_{i}'] = list(kabels[eerste_categorie].keys())[0]
+        sync_kabel_soort(i)
 
     if f'diameter_{i}' not in st.session_state:
-        cat = st.session_state[f'kabel_categorie_{i}']
-        soort = st.session_state[f'kabel_soort_{i}']
-        st.session_state[f'diameter_{i}'] = kabels[cat][soort]
-
-    # Bewaar vorige selectie om wijzigingen te detecteren
-    if f'prev_kabel_categorie_{i}' not in st.session_state:
-        st.session_state[f'prev_kabel_categorie_{i}'] = st.session_state[f'kabel_categorie_{i}']
-
-    if f'prev_kabel_soort_{i}' not in st.session_state:
-        st.session_state[f'prev_kabel_soort_{i}'] = st.session_state[f'kabel_soort_{i}']
+        sync_diameter(i)
 
     col1, col2, col3 = st.columns([1.5, 2.5, 1.5])
 
     with col1:
-        kabel_categorie = st.selectbox(
+        st.selectbox(
             "Categorie",
             list(kabels.keys()),
-            key=f'kabel_categorie_{i}'
+            key=f'kabel_categorie_{i}',
+            on_change=lambda idx=i: (sync_kabel_soort(idx), sync_diameter(idx))
         )
-        kabel_categorieen.append(kabel_categorie)
+        kabel_categorieen.append(st.session_state[f'kabel_categorie_{i}'])
 
-    # Beschikbare kabels bepalen op basis van gekozen categorie
-    beschikbare_kabels = list(kabels[kabel_categorie].keys())
-
-    # Als categorie gewijzigd is: kabelsoort resetten naar eerste geldige optie
-    if st.session_state[f'prev_kabel_categorie_{i}'] != kabel_categorie:
-        st.session_state[f'kabel_soort_{i}'] = beschikbare_kabels[0]
-        st.session_state[f'diameter_{i}'] = kabels[kabel_categorie][beschikbare_kabels[0]]
-        st.session_state[f'prev_kabel_categorie_{i}'] = kabel_categorie
-        st.session_state[f'prev_kabel_soort_{i}'] = beschikbare_kabels[0]
-
-    # Extra beveiliging: als huidige kabelsoort niet in categorie voorkomt, reset alsnog
-    if st.session_state[f'kabel_soort_{i}'] not in beschikbare_kabels:
-        st.session_state[f'kabel_soort_{i}'] = beschikbare_kabels[0]
-        st.session_state[f'diameter_{i}'] = kabels[kabel_categorie][beschikbare_kabels[0]]
-        st.session_state[f'prev_kabel_soort_{i}'] = beschikbare_kabels[0]
+    # Zorg dat kabelsoort geldig blijft na categorie-wijziging
+    sync_kabel_soort(i)
 
     with col2:
-        kabel_soort = st.selectbox(
+        cat = st.session_state[f'kabel_categorie_{i}']
+        st.selectbox(
             "Type kabel",
-            beschikbare_kabels,
-            key=f'kabel_soort_{i}'
+            list(kabels[cat].keys()),
+            key=f'kabel_soort_{i}',
+            on_change=lambda idx=i: sync_diameter(idx)
         )
-        kabels_soorten.append(kabel_soort)
-
-    # Als kabelsoort gewijzigd is: diameter automatisch bijwerken
-    if st.session_state[f'prev_kabel_soort_{i}'] != kabel_soort:
-        st.session_state[f'diameter_{i}'] = kabels[kabel_categorie][kabel_soort]
-        st.session_state[f'prev_kabel_soort_{i}'] = kabel_soort
+        kabels_soorten.append(st.session_state[f'kabel_soort_{i}'])
 
     with col3:
         diameter = st.number_input(
