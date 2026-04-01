@@ -229,14 +229,71 @@ kabels = {
     }
 }
 
+# -*- coding: utf-8 -*-
+import streamlit as st
+import math
+import matplotlib.pyplot as plt
 
-def update_diameter(i):
-    categorie = st.session_state[f'kabel_categorie_{i}']
+
+# Titel en subtitel
+st.title("K&L - Vullingsgraad")
+st.subheader("Applicatie om de vullingsgraad te bepalen")
+st.write("Dit is een applicatie die aan de hand van gegeven koker/buis en kabels aangeeft wat de vullingsgraad is van de koker/buis.")
+
+
+def sync_kabel_soort(i):
+    """Zorgt dat kabel_soort geldig is binnen gekozen categorie."""
+    cat = st.session_state[f'kabel_categorie_{i}']
+    beschikbare = list(kabels[cat].keys())
+
+    if st.session_state.get(f'kabel_soort_{i}') not in beschikbare:
+        st.session_state[f'kabel_soort_{i}'] = beschikbare[0]
+
+
+def sync_diameter(i):
+    """Zet diameter op basis van categorie + kabelsoort."""
+    cat = st.session_state[f'kabel_categorie_{i}']
     soort = st.session_state[f'kabel_soort_{i}']
-    st.session_state[f'diameter_{i}'] = kabels[categorie][soort]
+    st.session_state[f'diameter_{i}'] = kabels[cat][soort]
 
 
-# Header 'Kokerkeuze' en dropdown
+def init_aantal_state(i):
+    """Initialiseer model-state + widget-state voor aantal."""
+    value_key = f'aantal_value_{i}'
+    top_key = f'aantal_top_{i}'
+    result_key = f'aantal_result_{i}'
+
+    if value_key not in st.session_state:
+        st.session_state[value_key] = 1
+
+    if top_key not in st.session_state:
+        st.session_state[top_key] = st.session_state[value_key]
+
+    if result_key not in st.session_state:
+        st.session_state[result_key] = st.session_state[value_key]
+
+
+def sync_aantal_from_top(i):
+    """Synchroniseer aantal vanuit invoerblok naar model + resultatenblok."""
+    value_key = f'aantal_value_{i}'
+    top_key = f'aantal_top_{i}'
+    result_key = f'aantal_result_{i}'
+
+    st.session_state[value_key] = st.session_state[top_key]
+    st.session_state[result_key] = st.session_state[value_key]
+
+
+def sync_aantal_from_result(i):
+    """Synchroniseer aantal vanuit resultatenblok naar model + invoerblok."""
+    value_key = f'aantal_value_{i}'
+    top_key = f'aantal_top_{i}'
+    result_key = f'aantal_result_{i}'
+
+    st.session_state[value_key] = st.session_state[result_key]
+    st.session_state[top_key] = st.session_state[value_key]
+
+
+# Kokerkeuze
 st.header("Keuze kokers/buizen")
 
 num_kokers = st.number_input(
@@ -279,31 +336,19 @@ for k in range(int(num_kokers)):
         f"Gekozen: {koker_naam} ({koker_type}) met oppervlakte {kokers[koker_type]:.2f} mm²"
     )
 
-
-# Pagedivider
 st.markdown("---")
 
-# Header 'Kabelkeuze' en dropdown
+
+# Kabelkeuze
 st.header("Kabelkeuze")
 
-# Dropdown voor het aantal inputregels
-num_inputs = st.number_input("Selecteer het aantal kabeltypes in de koker", min_value=1, max_value=100, step=1)
+num_inputs = st.number_input(
+    "Selecteer het aantal kabeltypes in de kokers",
+    min_value=1,
+    max_value=100,
+    step=1
+)
 
-def sync_kabel_soort(i):
-    cat = st.session_state[f'kabel_categorie_{i}']
-    beschikbare = list(kabels[cat].keys())
-
-    if st.session_state.get(f'kabel_soort_{i}') not in beschikbare:
-        st.session_state[f'kabel_soort_{i}'] = beschikbare[0]
-
-
-def sync_diameter(i):
-    cat = st.session_state[f'kabel_categorie_{i}']
-    soort = st.session_state[f'kabel_soort_{i}']
-    st.session_state[f'diameter_{i}'] = kabels[cat][soort]
-
-
-# Lijsten om de inputwaarden op te slaan
 kabel_categorieen = []
 kabels_soorten = []
 namen = []
@@ -312,11 +357,12 @@ oppervlaktes_kabels = []
 aantallen = []
 koker_toewijzing = []
 
-# Dynamisch genereren van inputregels
 st.header("Kabels")
+
 for i in range(int(num_inputs)):
     st.markdown(f"#### Input {i+1}")
 
+    # Init defaults per rij
     if f'kabel_categorie_{i}' not in st.session_state:
         st.session_state[f'kabel_categorie_{i}'] = list(kabels.keys())[0]
 
@@ -326,10 +372,15 @@ for i in range(int(num_inputs)):
     if f'diameter_{i}' not in st.session_state:
         sync_diameter(i)
 
+    if f'naam_{i}' not in st.session_state:
+        st.session_state[f'naam_{i}'] = ""
+
     if f'koker_toewijzing_{i}' not in st.session_state:
         st.session_state[f'koker_toewijzing_{i}'] = gekozen_kokers[0]["naam"]
 
-    col1, col2, col3, col4 = st.columns([1.4, 2.4, 1.2, 1.6])
+    init_aantal_state(i)
+
+    col1, col2, col3, col4 = st.columns([1.4, 2.6, 1.2, 1.6])
 
     with col1:
         st.selectbox(
@@ -362,34 +413,55 @@ for i in range(int(num_inputs)):
         diameters.append(diameter)
 
     with col4:
-        toegewezen_koker = st.selectbox(
+        beschikbare_kokernamen = [k["naam"] for k in gekozen_kokers]
+
+        if st.session_state[f'koker_toewijzing_{i}'] not in beschikbare_kokernamen:
+            st.session_state[f'koker_toewijzing_{i}'] = beschikbare_kokernamen[0]
+
+        st.selectbox(
             "Naar koker",
-            [k["naam"] for k in gekozen_kokers],
+            beschikbare_kokernamen,
             key=f'koker_toewijzing_{i}'
         )
-        koker_toewijzing.append(toegewezen_koker)
+        koker_toewijzing.append(st.session_state[f'koker_toewijzing_{i}'])
 
-    col5, col6 = st.columns([1.5, 1.5])
+    col5, col6 = st.columns([2.5, 1.2])
 
     with col5:
         naam = st.text_input("Naam", placeholder="name", key=f'naam_{i}')
         namen.append(naam)
 
     with col6:
-        aantal = st.number_input("Aantal", min_value=0, step=1, value=1, key=f'aantal_{i}')
+        st.number_input(
+            "Aantal",
+            min_value=0,
+            step=1,
+            key=f'aantal_top_{i}',
+            on_change=lambda idx=i: sync_aantal_from_top(idx)
+        )
+
+        aantal = st.session_state[f'aantal_value_{i}']
         aantallen.append(aantal)
+
         oppervlakte_kabel = 0.25 * math.pi * (diameter ** 2) * aantal
         oppervlaktes_kabels.append(oppervlakte_kabel)
 
-# Resultaten weergeven
+
+# Ingevoerde gegevens
 st.write("### Ingevoerde gegevens")
 for i in range(int(num_inputs)):
     st.write(
-        f"Input {i+1}: {namen[i]} <> {kabels_soorten[i]} <> "
-        f"{aantallen[i]} x {diameters[i]:.2f} mm <> {koker_toewijzing[i]}"
+        f"Input {i+1}: "
+        f"{namen[i] if namen[i] else f'Input {i+1}'} <> "
+        f"{kabels_soorten[i]} <> "
+        f"{aantallen[i]} x {diameters[i]:.2f} mm <> "
+        f"{koker_toewijzing[i]}"
     )
 
 st.markdown("---")
+
+
+# Resultaten per koker
 st.header("Resultaten per koker")
 
 for koker in gekozen_kokers:
@@ -397,11 +469,14 @@ for koker in gekozen_kokers:
     koker_type = koker["type"]
     oppervlakte_koker = koker["oppervlakte"]
 
-    indices = [i for i in range(int(num_inputs)) if koker_toewijzing[i] == koker_naam]
+    indices = [i for i in range(int(num_inputs)) if st.session_state[f'koker_toewijzing_{i}'] == koker_naam]
 
     st.subheader(f"{koker_naam}")
     st.write(f"Type: {koker_type}")
     st.write(f"Oppervlakte koker/buis: {oppervlakte_koker:.2f} mm²")
+
+    kabel_namen_koker = []
+    kabel_oppervlaktes_koker = []
 
     if indices:
         st.write("#### Kabels in deze koker")
@@ -414,14 +489,11 @@ for koker in gekozen_kokers:
         with header3:
             st.markdown("**Bewerkt aantal**")
 
-        kabel_namen_koker = []
-        kabel_oppervlaktes_koker = []
-
         for i in indices:
             col1, col2, col3 = st.columns([2, 4, 1.5])
 
-            kabelnaam = namen[i] if namen[i] else f"Input {i+1}"
-            kabeltype = kabels_soorten[i]
+            kabelnaam = st.session_state[f'naam_{i}'] if st.session_state[f'naam_{i}'] else f"Input {i+1}"
+            kabeltype = st.session_state[f'kabel_soort_{i}']
 
             with col1:
                 st.write(kabelnaam)
@@ -430,36 +502,25 @@ for koker in gekozen_kokers:
                 st.write(kabeltype)
 
             with col3:
-                result_key = f'aantal_result_{i}'
-
-                # initialiseren met huidige waarde
-                if result_key not in st.session_state:
-                    st.session_state[result_key] = st.session_state[f'aantal_{i}']
-                
-                nieuw_aantal = st.number_input(
+                st.number_input(
                     f"Bewerkt aantal {i}",
                     min_value=0,
                     step=1,
-                    key=result_key,
+                    key=f'aantal_result_{i}',
+                    on_change=lambda idx=i: sync_aantal_from_result(idx),
                     label_visibility="collapsed"
                 )
-                
-                # synchroniseren naar hoofdwaarde
-                st.session_state[f'aantal_{i}'] = nieuw_aantal
 
-            actueel_aantal = st.session_state[f'aantal_{i}']
-            actuele_oppervlakte = 0.25 * math.pi * (diameters[i] ** 2) * actueel_aantal
+            actueel_aantal = st.session_state[f'aantal_value_{i}']
+            actuele_diameter = st.session_state[f'diameter_{i}']
+            actuele_oppervlakte = 0.25 * math.pi * (actuele_diameter ** 2) * actueel_aantal
 
             kabel_namen_koker.append(kabelnaam)
             kabel_oppervlaktes_koker.append(actuele_oppervlakte)
-
-        totale_oppervlakte_kabels = sum(kabel_oppervlaktes_koker)
     else:
         st.info("Geen kabels toegewezen aan deze koker.")
-        kabel_namen_koker = []
-        kabel_oppervlaktes_koker = []
-        totale_oppervlakte_kabels = 0.0
 
+    totale_oppervlakte_kabels = sum(kabel_oppervlaktes_koker)
     st.write(f"Totale kabeloppervlakte: {totale_oppervlakte_kabels:.2f} mm²")
 
     if totale_oppervlakte_kabels > oppervlakte_koker:
@@ -468,7 +529,7 @@ for koker in gekozen_kokers:
         )
         continue
 
-    vullingsgraad = totale_oppervlakte_kabels / oppervlakte_koker
+    vullingsgraad = totale_oppervlakte_kabels / oppervlakte_koker if oppervlakte_koker > 0 else 0
     resterende_oppervlakte = oppervlakte_koker - totale_oppervlakte_kabels
 
     st.write(f"Vullingsgraad: {vullingsgraad:.1%}")
