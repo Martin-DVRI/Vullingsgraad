@@ -1,15 +1,3 @@
-# -*- coding: utf-8 -*-
-import streamlit as st
-import math
-import matplotlib.pyplot as plt
-
-
-# Titel en subtitel
-st.title("K&L - Vullingsgraad")
-st.subheader("Applicatie om de vullingsgraad te bepalen")
-st.write("Dit is een applicatie die aan de hand van gegeven koker/buis en kabels aangeeft wat de vullingsgraad is van de koker/buis.")
-
-
 # Dictionary met kokers en hun oppervlaktes
 kokers = {
     'Koker 9,5x8,5': 8075.0,
@@ -229,7 +217,6 @@ kabels = {
     }
 }
 
-# -*- coding: utf-8 -*-
 import streamlit as st
 import math
 import matplotlib.pyplot as plt
