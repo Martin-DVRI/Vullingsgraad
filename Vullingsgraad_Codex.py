@@ -399,14 +399,58 @@ for koker in gekozen_kokers:
 
     indices = [i for i in range(int(num_inputs)) if koker_toewijzing[i] == koker_naam]
 
-    kabel_namen_koker = [namen[i] if namen[i] else f"Input {i+1}" for i in indices]
-    kabel_oppervlaktes_koker = [oppervlaktes_kabels[i] for i in indices]
-
-    totale_oppervlakte_kabels = sum(kabel_oppervlaktes_koker)
-
     st.subheader(f"{koker_naam}")
     st.write(f"Type: {koker_type}")
     st.write(f"Oppervlakte koker/buis: {oppervlakte_koker:.2f} mm²")
+
+    if indices:
+        st.write("#### Kabels in deze koker")
+
+        header1, header2, header3 = st.columns([2, 4, 1.5])
+        with header1:
+            st.markdown("**Kabelnaam**")
+        with header2:
+            st.markdown("**Kabeltype**")
+        with header3:
+            st.markdown("**Bewerkt aantal**")
+
+        kabel_namen_koker = []
+        kabel_oppervlaktes_koker = []
+
+        for i in indices:
+            col1, col2, col3 = st.columns([2, 4, 1.5])
+
+            kabelnaam = namen[i] if namen[i] else f"Input {i+1}"
+            kabeltype = kabels_soorten[i]
+
+            with col1:
+                st.write(kabelnaam)
+
+            with col2:
+                st.write(kabeltype)
+
+            with col3:
+                st.number_input(
+                    f"Bewerkt aantal {i}",
+                    min_value=0,
+                    step=1,
+                    key=f'aantal_{i}',
+                    label_visibility="collapsed"
+                )
+
+            actueel_aantal = st.session_state[f'aantal_{i}']
+            actuele_oppervlakte = 0.25 * math.pi * (diameters[i] ** 2) * actueel_aantal
+
+            kabel_namen_koker.append(kabelnaam)
+            kabel_oppervlaktes_koker.append(actuele_oppervlakte)
+
+        totale_oppervlakte_kabels = sum(kabel_oppervlaktes_koker)
+    else:
+        st.info("Geen kabels toegewezen aan deze koker.")
+        kabel_namen_koker = []
+        kabel_oppervlaktes_koker = []
+        totale_oppervlakte_kabels = 0.0
+
     st.write(f"Totale kabeloppervlakte: {totale_oppervlakte_kabels:.2f} mm²")
 
     if totale_oppervlakte_kabels > oppervlakte_koker:
@@ -429,8 +473,10 @@ for koker in gekozen_kokers:
     sizes = kabel_oppervlaktes_koker + [resterende_oppervlakte]
 
     if len(kabel_namen_koker) > 0:
-        colors = ['#%02x%02x%02x' % (0, int(255 - 255 * i / len(kabel_namen_koker)), 0)
-                  for i in range(len(kabel_namen_koker))]
+        colors = [
+            '#%02x%02x%02x' % (0, int(255 - 255 * j / len(kabel_namen_koker)), 0)
+            for j in range(len(kabel_namen_koker))
+        ]
     else:
         colors = []
 
