@@ -265,23 +265,28 @@ aantallen = []
 
 # Dynamisch genereren van inputregels
 st.header("Kabels")
-for i in range(num_inputs):
+for i in range(int(num_inputs)):
     st.markdown(f"#### Input {i+1}")
 
     # Initialiseer session state voor deze rij
     if f'kabel_categorie_{i}' not in st.session_state:
-        eerste_categorie = list(kabels.keys())[0]
-        st.session_state[f'kabel_categorie_{i}'] = eerste_categorie
+        st.session_state[f'kabel_categorie_{i}'] = list(kabels.keys())[0]
 
     if f'kabel_soort_{i}' not in st.session_state:
-        huidige_categorie = st.session_state[f'kabel_categorie_{i}']
-        eerste_soort = list(kabels[huidige_categorie].keys())[0]
-        st.session_state[f'kabel_soort_{i}'] = eerste_soort
+        eerste_categorie = st.session_state[f'kabel_categorie_{i}']
+        st.session_state[f'kabel_soort_{i}'] = list(kabels[eerste_categorie].keys())[0]
 
     if f'diameter_{i}' not in st.session_state:
-        huidige_categorie = st.session_state[f'kabel_categorie_{i}']
-        huidige_soort = st.session_state[f'kabel_soort_{i}']
-        st.session_state[f'diameter_{i}'] = kabels[huidige_categorie][huidige_soort]
+        cat = st.session_state[f'kabel_categorie_{i}']
+        soort = st.session_state[f'kabel_soort_{i}']
+        st.session_state[f'diameter_{i}'] = kabels[cat][soort]
+
+    # Bewaar vorige selectie om wijzigingen te detecteren
+    if f'prev_kabel_categorie_{i}' not in st.session_state:
+        st.session_state[f'prev_kabel_categorie_{i}'] = st.session_state[f'kabel_categorie_{i}']
+
+    if f'prev_kabel_soort_{i}' not in st.session_state:
+        st.session_state[f'prev_kabel_soort_{i}'] = st.session_state[f'kabel_soort_{i}']
 
     col1, col2, col3 = st.columns([1.5, 2.5, 1.5])
 
@@ -289,28 +294,38 @@ for i in range(num_inputs):
         kabel_categorie = st.selectbox(
             "Categorie",
             list(kabels.keys()),
-            key=f'kabel_categorie_{i}',
-            on_change=update_diameter,
-            args=(i,)
+            key=f'kabel_categorie_{i}'
         )
         kabel_categorieen.append(kabel_categorie)
 
+    # Beschikbare kabels bepalen op basis van gekozen categorie
+    beschikbare_kabels = list(kabels[kabel_categorie].keys())
+
+    # Als categorie gewijzigd is: kabelsoort resetten naar eerste geldige optie
+    if st.session_state[f'prev_kabel_categorie_{i}'] != kabel_categorie:
+        st.session_state[f'kabel_soort_{i}'] = beschikbare_kabels[0]
+        st.session_state[f'diameter_{i}'] = kabels[kabel_categorie][beschikbare_kabels[0]]
+        st.session_state[f'prev_kabel_categorie_{i}'] = kabel_categorie
+        st.session_state[f'prev_kabel_soort_{i}'] = beschikbare_kabels[0]
+
+    # Extra beveiliging: als huidige kabelsoort niet in categorie voorkomt, reset alsnog
+    if st.session_state[f'kabel_soort_{i}'] not in beschikbare_kabels:
+        st.session_state[f'kabel_soort_{i}'] = beschikbare_kabels[0]
+        st.session_state[f'diameter_{i}'] = kabels[kabel_categorie][beschikbare_kabels[0]]
+        st.session_state[f'prev_kabel_soort_{i}'] = beschikbare_kabels[0]
+
     with col2:
-        beschikbare_kabels = list(kabels[kabel_categorie].keys())
-
-        # Reset kabelsoort als die niet voorkomt in de nieuw gekozen categorie
-        if st.session_state[f'kabel_soort_{i}'] not in beschikbare_kabels:
-            st.session_state[f'kabel_soort_{i}'] = beschikbare_kabels[0]
-            update_diameter(i)
-
         kabel_soort = st.selectbox(
             "Type kabel",
             beschikbare_kabels,
-            key=f'kabel_soort_{i}',
-            on_change=update_diameter,
-            args=(i,)
+            key=f'kabel_soort_{i}'
         )
         kabels_soorten.append(kabel_soort)
+
+    # Als kabelsoort gewijzigd is: diameter automatisch bijwerken
+    if st.session_state[f'prev_kabel_soort_{i}'] != kabel_soort:
+        st.session_state[f'diameter_{i}'] = kabels[kabel_categorie][kabel_soort]
+        st.session_state[f'prev_kabel_soort_{i}'] = kabel_soort
 
     with col3:
         diameter = st.number_input(
