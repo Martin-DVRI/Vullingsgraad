@@ -430,13 +430,22 @@ for koker in gekozen_kokers:
                 st.write(kabeltype)
 
             with col3:
-                st.number_input(
+                result_key = f'aantal_result_{i}'
+
+                # initialiseren met huidige waarde
+                if result_key not in st.session_state:
+                    st.session_state[result_key] = st.session_state[f'aantal_{i}']
+                
+                nieuw_aantal = st.number_input(
                     f"Bewerkt aantal {i}",
                     min_value=0,
                     step=1,
-                    key=f'aantal_{i}',
+                    key=result_key,
                     label_visibility="collapsed"
                 )
+                
+                # synchroniseren naar hoofdwaarde
+                st.session_state[f'aantal_{i}'] = nieuw_aantal
 
             actueel_aantal = st.session_state[f'aantal_{i}']
             actuele_oppervlakte = 0.25 * math.pi * (diameters[i] ** 2) * actueel_aantal
