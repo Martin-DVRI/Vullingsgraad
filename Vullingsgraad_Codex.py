@@ -230,21 +230,55 @@ kabels = {
 }
 
 
-#def update_diameter(i):
-#    categorie = st.session_state[f'kabel_categorie_{i}']
- #   soort = st.session_state[f'kabel_soort_{i}']
-  #  st.session_state[f'diameter_{i}'] = kabels[categorie][soort]
+def update_diameter(i):
+    categorie = st.session_state[f'kabel_categorie_{i}']
+    soort = st.session_state[f'kabel_soort_{i}']
+    st.session_state[f'diameter_{i}'] = kabels[categorie][soort]
 
 
 # Header 'Kokerkeuze' en dropdown
-st.header("Keuze koker/buis")
-kokerkeuze = st.selectbox("Selecteer een koker/buis", list(kokers.keys()))
+st.header("Keuze kokers/buizen")
 
-# Haal de oppervlakte van de gekozen koker uit de dictionary
-oppervlakte_koker = kokers[kokerkeuze]
+num_kokers = st.number_input(
+    "Selecteer het aantal kokers/buizen",
+    min_value=1,
+    max_value=3,
+    step=1,
+    value=1
+)
 
-# Weergeven van de gekozen koker en de oppervlakte
-st.write(f"Gekozen: {kokerkeuze} met oppervlakte {oppervlakte_koker:.2f} mm²")
+gekozen_kokers = []
+
+for k in range(int(num_kokers)):
+    st.markdown(f"### Koker {k+1}")
+
+    col1, col2 = st.columns([1.5, 2.5])
+
+    with col1:
+        koker_naam = st.text_input(
+            "Naam koker",
+            value=f"Koker {k+1}",
+            key=f"koker_naam_{k}"
+        )
+
+    with col2:
+        koker_type = st.selectbox(
+            "Selecteer een koker/buis",
+            list(kokers.keys()),
+            key=f"koker_type_{k}"
+        )
+
+    gekozen_kokers.append({
+        "id": k,
+        "naam": koker_naam,
+        "type": koker_type,
+        "oppervlakte": kokers[koker_type]
+    })
+
+    st.write(
+        f"Gekozen: {koker_naam} ({koker_type}) met oppervlakte {kokers[koker_type]:.2f} mm²"
+    )
+
 
 # Pagedivider
 st.markdown("---")
@@ -255,19 +289,7 @@ st.header("Kabelkeuze")
 # Dropdown voor het aantal inputregels
 num_inputs = st.number_input("Selecteer het aantal kabeltypes in de koker", min_value=1, max_value=100, step=1)
 
-# Lijsten om de inputwaarden op te slaan
-kabel_categorieen = []
-kabels_soorten = []
-namen = []
-diameters = []
-oppervlaktes_kabels = []
-aantallen = []
-
-# Dynamisch genereren van inputregels
-st.header("Kabels")        #Onderstaande loop via Codex gegenereerd
-
 def sync_kabel_soort(i):
-    """Zorgt dat kabel_soort geldig is binnen gekozen categorie"""
     cat = st.session_state[f'kabel_categorie_{i}']
     beschikbare = list(kabels[cat].keys())
 
@@ -276,15 +298,25 @@ def sync_kabel_soort(i):
 
 
 def sync_diameter(i):
-    """Zet diameter op basis van categorie + kabelsoort"""
     cat = st.session_state[f'kabel_categorie_{i}']
     soort = st.session_state[f'kabel_soort_{i}']
     st.session_state[f'diameter_{i}'] = kabels[cat][soort]
 
+
+# Lijsten om de inputwaarden op te slaan
+kabel_categorieen = []
+kabels_soorten = []
+namen = []
+diameters = []
+oppervlaktes_kabels = []
+aantallen = []
+koker_toewijzing = []
+
+# Dynamisch genereren van inputregels
+st.header("Kabels")
 for i in range(int(num_inputs)):
     st.markdown(f"#### Input {i+1}")
 
-    # Init defaults (éénmalig per rij)
     if f'kabel_categorie_{i}' not in st.session_state:
         st.session_state[f'kabel_categorie_{i}'] = list(kabels.keys())[0]
 
@@ -294,7 +326,10 @@ for i in range(int(num_inputs)):
     if f'diameter_{i}' not in st.session_state:
         sync_diameter(i)
 
-    col1, col2, col3 = st.columns([1.5, 2.5, 1.5])
+    if f'koker_toewijzing_{i}' not in st.session_state:
+        st.session_state[f'koker_toewijzing_{i}'] = gekozen_kokers[0]["naam"]
+
+    col1, col2, col3, col4 = st.columns([1.4, 2.4, 1.2, 1.6])
 
     with col1:
         st.selectbox(
@@ -305,7 +340,6 @@ for i in range(int(num_inputs)):
         )
         kabel_categorieen.append(st.session_state[f'kabel_categorie_{i}'])
 
-    # Zorg dat kabelsoort geldig blijft na categorie-wijziging
     sync_kabel_soort(i)
 
     with col2:
@@ -327,13 +361,21 @@ for i in range(int(num_inputs)):
         )
         diameters.append(diameter)
 
-    col4, col5 = st.columns([1.5, 1.5])
-
     with col4:
+        toegewezen_koker = st.selectbox(
+            "Naar koker",
+            [k["naam"] for k in gekozen_kokers],
+            key=f'koker_toewijzing_{i}'
+        )
+        koker_toewijzing.append(toegewezen_koker)
+
+    col5, col6 = st.columns([1.5, 1.5])
+
+    with col5:
         naam = st.text_input("Naam", placeholder="name", key=f'naam_{i}')
         namen.append(naam)
 
-    with col5:
+    with col6:
         aantal = st.number_input("Aantal", min_value=0, step=1, value=1, key=f'aantal_{i}')
         aantallen.append(aantal)
         oppervlakte_kabel = 0.25 * math.pi * (diameter ** 2) * aantal
@@ -341,39 +383,67 @@ for i in range(int(num_inputs)):
 
 # Resultaten weergeven
 st.write("### Ingevoerde gegevens")
-st.write(f"Geselecteerde koker/buis: {kokerkeuze} met oppervlakte {oppervlakte_koker:.2f} mm²")
-for i in range(num_inputs):
-    st.write(f"Input {i+1}: {namen[i]}  <>  {kabels_soorten[i]}  <>  {aantallen[i]} x {diameters[i]:.2f} mm")
+for i in range(int(num_inputs)):
+    st.write(
+        f"Input {i+1}: {namen[i]} <> {kabels_soorten[i]} <> "
+        f"{aantallen[i]} x {diameters[i]:.2f} mm <> {koker_toewijzing[i]}"
+    )
 
-# Totale oppervlakte van de kabels berekenen
-totale_oppervlakte_kabels = sum(oppervlaktes_kabels)
+st.markdown("---")
+st.header("Resultaten per koker")
 
-# Controleer of de totale oppervlakte van de kabels groter is dan de oppervlakte van de koker
-if totale_oppervlakte_kabels > oppervlakte_koker:
-    st.error("De totale oppervlakte van de kabels is groter dan de oppervlakte van de gekozen koker!")
-else:
-    # Bereken de resterende ruimte in de koker
+for koker in gekozen_kokers:
+    koker_naam = koker["naam"]
+    koker_type = koker["type"]
+    oppervlakte_koker = koker["oppervlakte"]
+
+    indices = [i for i in range(int(num_inputs)) if koker_toewijzing[i] == koker_naam]
+
+    kabel_namen_koker = [namen[i] if namen[i] else f"Input {i+1}" for i in indices]
+    kabel_oppervlaktes_koker = [oppervlaktes_kabels[i] for i in indices]
+
+    totale_oppervlakte_kabels = sum(kabel_oppervlaktes_koker)
+
+    st.subheader(f"{koker_naam}")
+    st.write(f"Type: {koker_type}")
+    st.write(f"Oppervlakte koker/buis: {oppervlakte_koker:.2f} mm²")
+    st.write(f"Totale kabeloppervlakte: {totale_oppervlakte_kabels:.2f} mm²")
+
+    if totale_oppervlakte_kabels > oppervlakte_koker:
+        st.error(
+            f"De totale oppervlakte van de kabels in {koker_naam} is groter dan de oppervlakte van de gekozen koker!"
+        )
+        continue
+
+    vullingsgraad = totale_oppervlakte_kabels / oppervlakte_koker
     resterende_oppervlakte = oppervlakte_koker - totale_oppervlakte_kabels
-    if totale_oppervlakte_kabels / oppervlakte_koker > 0.75:
-        st.warning('De vullingsgraad is meer dan 75%')
 
-    # Pie-chart gegevens voorbereiden
-    labels = namen + ["Resterende ruimte"]
-    sizes = oppervlaktes_kabels + [resterende_oppervlakte]
-    colors = ['#%02x%02x%02x' % (0, int(255 - 255 * i / len(namen)), 0) for i in range(len(namen))]
+    st.write(f"Vullingsgraad: {vullingsgraad:.1%}")
 
-    if totale_oppervlakte_kabels / oppervlakte_koker > 0.75:
+    if vullingsgraad > 0.75:
+        st.warning(f"De vullingsgraad van {koker_naam} is meer dan 75%")
+    elif vullingsgraad > 0.50:
+        st.info(f"De vullingsgraad van {koker_naam} is meer dan 50%")
+
+    labels = kabel_namen_koker + ["Resterende ruimte"]
+    sizes = kabel_oppervlaktes_koker + [resterende_oppervlakte]
+
+    if len(kabel_namen_koker) > 0:
+        colors = ['#%02x%02x%02x' % (0, int(255 - 255 * i / len(kabel_namen_koker)), 0)
+                  for i in range(len(kabel_namen_koker))]
+    else:
+        colors = []
+
+    if vullingsgraad > 0.75:
         colors.append('#ff0000')
-    elif totale_oppervlakte_kabels / oppervlakte_koker > 0.50:
+    elif vullingsgraad > 0.50:
         colors.append('#fff600')
     else:
         colors.append('#ffcc99')
 
-    # Pie-chart maken
     fig, ax = plt.subplots()
     ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90)
     ax.axis('equal')
-    ax.set_title("Verdeling koker")
+    ax.set_title(f"Verdeling {koker_naam}")
 
-    # Pie-chart weergeven
     st.pyplot(fig)
