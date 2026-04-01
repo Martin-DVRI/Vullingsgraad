@@ -1,3 +1,12 @@
+import streamlit as st
+import math
+import matplotlib.pyplot as plt
+
+st.set_page_config(
+    page_title="K&L - Vullingsgraad",
+    layout="wide"
+)
+
 # Dictionary met kokers en hun oppervlaktes
 kokers = {
     'Koker 9,5x8,5': 8075.0,
@@ -217,10 +226,6 @@ kabels = {
     }
 }
 
-# -*- coding: utf-8 -*-
-import streamlit as st
-import math
-import matplotlib.pyplot as plt
 
 
 # Titel en subtitel
