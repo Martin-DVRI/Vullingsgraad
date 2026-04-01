@@ -217,6 +217,7 @@ kabels = {
     }
 }
 
+# -*- coding: utf-8 -*-
 import streamlit as st
 import math
 import matplotlib.pyplot as plt
@@ -225,7 +226,10 @@ import matplotlib.pyplot as plt
 # Titel en subtitel
 st.title("K&L - Vullingsgraad")
 st.subheader("Applicatie om de vullingsgraad te bepalen")
-st.write("Dit is een applicatie die aan de hand van gegeven koker/buis en kabels aangeeft wat de vullingsgraad is van de koker/buis.")
+st.write(
+    "Dit is een applicatie die aan de hand van gegeven koker/buis en kabels aangeeft "
+    "wat de vullingsgraad is van de koker/buis."
+)
 
 
 def sync_kabel_soort(i):
@@ -280,8 +284,31 @@ def sync_aantal_from_result(i):
     st.session_state[top_key] = st.session_state[value_key]
 
 
-# Kokerkeuze
-st.header("Keuze kokers/buizen")
+def get_restkleur(vullingsgraad):
+    """Bepaal kleur van resterende ruimte in de pie chart."""
+    if vullingsgraad > 0.75:
+        return '#ff0000'
+    elif vullingsgraad > 0.50:
+        return '#fff600'
+    else:
+        return '#ffcc99'
+
+
+def toon_vullingsmelding(koker_naam, vullingsgraad):
+    """Toon statusmelding met passende kleur/intensiteit."""
+    if vullingsgraad > 1.0:
+        st.error(f"{koker_naam} is kleiner dan ingevoerde kabels (>100%).")
+    elif vullingsgraad > 0.75:
+        st.warning(f"{koker_naam} is meer dan 75% gevuld.")
+    elif vullingsgraad > 0.50:
+        st.info(f"{koker_naam} is meer dan 50% gevuld.")
+
+
+# =========================
+# 1. KOKERS CONFIGUREREN
+# =========================
+st.markdown("---")
+st.header("1. Kokers configureren")
 
 num_kokers = st.number_input(
     "Selecteer het aantal kokers/buizen",
@@ -294,9 +321,9 @@ num_kokers = st.number_input(
 gekozen_kokers = []
 
 for k in range(int(num_kokers)):
-    st.markdown(f"### Koker {k+1}")
+    st.markdown(f"#### Koker {k+1}")
 
-    col1, col2 = st.columns([1.5, 2.5])
+    col1, col2 = st.columns([1.4, 2.6])
 
     with col1:
         koker_naam = st.text_input(
@@ -307,7 +334,7 @@ for k in range(int(num_kokers)):
 
     with col2:
         koker_type = st.selectbox(
-            "Selecteer een koker/buis",
+            "Type koker/buis",
             list(kokers.keys()),
             key=f"koker_type_{k}"
         )
@@ -319,21 +346,21 @@ for k in range(int(num_kokers)):
         "oppervlakte": kokers[koker_type]
     })
 
-    st.write(
-        f"Gekozen: {koker_naam} ({koker_type}) met oppervlakte {kokers[koker_type]:.2f} mm²"
-    )
+    st.caption(f"Oppervlakte: {kokers[koker_type]:.2f} mm²")
 
+
+# =========================
+# 2. KABELS INVOEREN
+# =========================
 st.markdown("---")
-
-
-# Kabelkeuze
-st.header("Kabelkeuze")
+st.header("2. Kabels invoeren")
 
 num_inputs = st.number_input(
     "Selecteer het aantal kabeltypes in de kokers",
     min_value=1,
     max_value=100,
-    step=1
+    step=1,
+    value=1
 )
 
 kabel_categorieen = []
@@ -344,12 +371,24 @@ oppervlaktes_kabels = []
 aantallen = []
 koker_toewijzing = []
 
-st.header("Kabels")
+st.markdown("#### Kabelregels")
+
+# Headerregel
+h1, h2, h3, h4, h5, h6 = st.columns([1.4, 2.8, 1.0, 1.4, 1.8, 1.0])
+with h1:
+    st.markdown("**Categorie**")
+with h2:
+    st.markdown("**Type kabel**")
+with h3:
+    st.markdown("**Diameter**")
+with h4:
+    st.markdown("**Naar koker**")
+with h5:
+    st.markdown("**Naam**")
+with h6:
+    st.markdown("**Aantal**")
 
 for i in range(int(num_inputs)):
-    st.markdown(f"#### Input {i+1}")
-
-    # Init defaults per rij
     if f'kabel_categorie_{i}' not in st.session_state:
         st.session_state[f'kabel_categorie_{i}'] = list(kabels.keys())[0]
 
@@ -367,14 +406,15 @@ for i in range(int(num_inputs)):
 
     init_aantal_state(i)
 
-    col1, col2, col3, col4 = st.columns([1.4, 2.6, 1.2, 1.6])
+    col1, col2, col3, col4, col5, col6 = st.columns([1.4, 2.8, 1.0, 1.4, 1.8, 1.0])
 
     with col1:
         st.selectbox(
-            "Categorie",
+            f"Categorie {i}",
             list(kabels.keys()),
             key=f'kabel_categorie_{i}',
-            on_change=lambda idx=i: (sync_kabel_soort(idx), sync_diameter(idx))
+            on_change=lambda idx=i: (sync_kabel_soort(idx), sync_diameter(idx)),
+            label_visibility="collapsed"
         )
         kabel_categorieen.append(st.session_state[f'kabel_categorie_{i}'])
 
@@ -383,19 +423,21 @@ for i in range(int(num_inputs)):
     with col2:
         cat = st.session_state[f'kabel_categorie_{i}']
         st.selectbox(
-            "Type kabel",
+            f"Type kabel {i}",
             list(kabels[cat].keys()),
             key=f'kabel_soort_{i}',
-            on_change=lambda idx=i: sync_diameter(idx)
+            on_change=lambda idx=i: sync_diameter(idx),
+            label_visibility="collapsed"
         )
         kabels_soorten.append(st.session_state[f'kabel_soort_{i}'])
 
     with col3:
         diameter = st.number_input(
-            "Diameter [mm]",
+            f"Diameter {i}",
             min_value=0.0,
             step=0.1,
-            key=f'diameter_{i}'
+            key=f'diameter_{i}',
+            label_visibility="collapsed"
         )
         diameters.append(diameter)
 
@@ -406,25 +448,30 @@ for i in range(int(num_inputs)):
             st.session_state[f'koker_toewijzing_{i}'] = beschikbare_kokernamen[0]
 
         st.selectbox(
-            "Naar koker",
+            f"Naar koker {i}",
             beschikbare_kokernamen,
-            key=f'koker_toewijzing_{i}'
+            key=f'koker_toewijzing_{i}',
+            label_visibility="collapsed"
         )
         koker_toewijzing.append(st.session_state[f'koker_toewijzing_{i}'])
 
-    col5, col6 = st.columns([2.5, 1.2])
-
     with col5:
-        naam = st.text_input("Naam", placeholder="name", key=f'naam_{i}')
+        naam = st.text_input(
+            f"Naam {i}",
+            key=f'naam_{i}',
+            placeholder=f"Kabel {i+1}",
+            label_visibility="collapsed"
+        )
         namen.append(naam)
 
     with col6:
         st.number_input(
-            "Aantal",
+            f"Aantal {i}",
             min_value=0,
             step=1,
             key=f'aantal_top_{i}',
-            on_change=lambda idx=i: sync_aantal_from_top(idx)
+            on_change=lambda idx=i: sync_aantal_from_top(idx),
+            label_visibility="collapsed"
         )
 
         aantal = st.session_state[f'aantal_value_{i}']
@@ -434,119 +481,124 @@ for i in range(int(num_inputs)):
         oppervlaktes_kabels.append(oppervlakte_kabel)
 
 
-# Ingevoerde gegevens
-st.write("### Ingevoerde gegevens")
-for i in range(int(num_inputs)):
-    st.write(
-        f"Input {i+1}: "
-        f"{namen[i] if namen[i] else f'Input {i+1}'} <> "
-        f"{kabels_soorten[i]} <> "
-        f"{aantallen[i]} x {diameters[i]:.2f} mm <> "
-        f"{koker_toewijzing[i]}"
-    )
-
+# =========================
+# 3. RESULTATEN PER KOKER
+# =========================
 st.markdown("---")
-
-
-# Resultaten per koker
-st.header("Resultaten per koker")
+st.header("3. Resultaten per koker")
 
 for koker in gekozen_kokers:
     koker_naam = koker["naam"]
     koker_type = koker["type"]
     oppervlakte_koker = koker["oppervlakte"]
 
-    indices = [i for i in range(int(num_inputs)) if st.session_state[f'koker_toewijzing_{i}'] == koker_naam]
-
-    st.subheader(f"{koker_naam}")
-    st.write(f"Type: {koker_type}")
-    st.write(f"Oppervlakte koker/buis: {oppervlakte_koker:.2f} mm²")
+    indices = [
+        i for i in range(int(num_inputs))
+        if st.session_state[f'koker_toewijzing_{i}'] == koker_naam
+    ]
 
     kabel_namen_koker = []
     kabel_oppervlaktes_koker = []
 
-    if indices:
-        st.write("#### Kabels in deze koker")
+    for i in indices:
+        kabelnaam = st.session_state[f'naam_{i}'] if st.session_state[f'naam_{i}'] else f"Kabel {i+1}"
+        actueel_aantal = st.session_state[f'aantal_value_{i}']
+        actuele_diameter = st.session_state[f'diameter_{i}']
+        actuele_oppervlakte = 0.25 * math.pi * (actuele_diameter ** 2) * actueel_aantal
 
-        header1, header2, header3 = st.columns([2, 4, 1.5])
-        with header1:
-            st.markdown("**Kabelnaam**")
-        with header2:
-            st.markdown("**Kabeltype**")
-        with header3:
-            st.markdown("**Bewerkt aantal**")
-
-        for i in indices:
-            col1, col2, col3 = st.columns([2, 4, 1.5])
-
-            kabelnaam = st.session_state[f'naam_{i}'] if st.session_state[f'naam_{i}'] else f"Input {i+1}"
-            kabeltype = st.session_state[f'kabel_soort_{i}']
-
-            with col1:
-                st.write(kabelnaam)
-
-            with col2:
-                st.write(kabeltype)
-
-            with col3:
-                st.number_input(
-                    f"Bewerkt aantal {i}",
-                    min_value=0,
-                    step=1,
-                    key=f'aantal_result_{i}',
-                    on_change=lambda idx=i: sync_aantal_from_result(idx),
-                    label_visibility="collapsed"
-                )
-
-            actueel_aantal = st.session_state[f'aantal_value_{i}']
-            actuele_diameter = st.session_state[f'diameter_{i}']
-            actuele_oppervlakte = 0.25 * math.pi * (actuele_diameter ** 2) * actueel_aantal
-
-            kabel_namen_koker.append(kabelnaam)
-            kabel_oppervlaktes_koker.append(actuele_oppervlakte)
-    else:
-        st.info("Geen kabels toegewezen aan deze koker.")
+        kabel_namen_koker.append(kabelnaam)
+        kabel_oppervlaktes_koker.append(actuele_oppervlakte)
 
     totale_oppervlakte_kabels = sum(kabel_oppervlaktes_koker)
-    st.write(f"Totale kabeloppervlakte: {totale_oppervlakte_kabels:.2f} mm²")
+    vullingsgraad = totale_oppervlakte_kabels / oppervlakte_koker if oppervlakte_koker > 0 else 0.0
+    resterende_oppervlakte = max(0.0, oppervlakte_koker - totale_oppervlakte_kabels)
 
-    if totale_oppervlakte_kabels > oppervlakte_koker:
-        st.error(
-            f"De totale oppervlakte van de kabels in {koker_naam} is groter dan de oppervlakte van de gekozen koker!"
-        )
-        continue
+    st.markdown("---")
+    st.subheader(koker_naam)
 
-    vullingsgraad = totale_oppervlakte_kabels / oppervlakte_koker if oppervlakte_koker > 0 else 0
-    resterende_oppervlakte = oppervlakte_koker - totale_oppervlakte_kabels
+    left, right = st.columns([1.35, 1.0])
 
-    st.write(f"Vullingsgraad: {vullingsgraad:.1%}")
+    with left:
+        st.caption(f"{koker_type}")
 
-    if vullingsgraad > 0.75:
-        st.warning(f"De vullingsgraad van {koker_naam} is meer dan 75%")
-    elif vullingsgraad > 0.50:
-        st.info(f"De vullingsgraad van {koker_naam} is meer dan 50%")
+        m1, m2, m3 = st.columns(3)
+        with m1:
+            st.metric("Oppervlakte koker", f"{oppervlakte_koker:.0f} mm²")
+        with m2:
+            st.metric("Kabeloppervlakte", f"{totale_oppervlakte_kabels:.0f} mm²")
+        with m3:
+            st.metric("Vullingsgraad", f"{vullingsgraad:.1%}")
 
-    labels = kabel_namen_koker + ["Resterende ruimte"]
-    sizes = kabel_oppervlaktes_koker + [resterende_oppervlakte]
+        toon_vullingsmelding(koker_naam, vullingsgraad)
 
-    if len(kabel_namen_koker) > 0:
-        colors = [
-            '#%02x%02x%02x' % (0, int(255 - 255 * j / len(kabel_namen_koker)), 0)
-            for j in range(len(kabel_namen_koker))
-        ]
-    else:
-        colors = []
+        st.markdown("##### Kabels in deze koker")
 
-    if vullingsgraad > 0.75:
-        colors.append('#ff0000')
-    elif vullingsgraad > 0.50:
-        colors.append('#fff600')
-    else:
-        colors.append('#ffcc99')
+        if indices:
+            th1, th2, th3 = st.columns([2.0, 3.6, 1.4])
+            with th1:
+                st.markdown("**Kabelnaam**")
+            with th2:
+                st.markdown("**Kabeltype**")
+            with th3:
+                st.markdown("**Bewerkt aantal**")
 
-    fig, ax = plt.subplots()
-    ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90)
-    ax.axis('equal')
-    ax.set_title(f"Verdeling {koker_naam}")
+            for i in indices:
+                kabelnaam = st.session_state[f'naam_{i}'] if st.session_state[f'naam_{i}'] else f"Kabel {i+1}"
+                kabeltype = st.session_state[f'kabel_soort_{i}']
 
-    st.pyplot(fig)
+                c1, c2, c3 = st.columns([2.0, 3.6, 1.4])
+
+                with c1:
+                    st.write(kabelnaam)
+
+                with c2:
+                    st.write(kabeltype)
+
+                with c3:
+                    st.number_input(
+                        f"Bewerkt aantal {i}",
+                        min_value=0,
+                        step=1,
+                        key=f'aantal_result_{i}',
+                        on_change=lambda idx=i: sync_aantal_from_result(idx),
+                        label_visibility="collapsed"
+                    )
+        else:
+            st.info("Geen kabels toegewezen aan deze koker.")
+
+    with right:
+        fig, ax = plt.subplots()
+
+        if totale_oppervlakte_kabels <= oppervlakte_koker:
+            labels = kabel_namen_koker + ["Resterende ruimte"]
+            sizes = kabel_oppervlaktes_koker + [resterende_oppervlakte]
+        else:
+            labels = kabel_namen_koker
+            sizes = kabel_oppervlaktes_koker
+
+        if len(kabel_namen_koker) > 0:
+            colors = [
+                '#%02x%02x%02x' % (0, int(255 - 255 * j / len(kabel_namen_koker)), 0)
+                for j in range(len(kabel_namen_koker))
+            ]
+        else:
+            colors = []
+
+        if totale_oppervlakte_kabels <= oppervlakte_koker:
+            colors.append(get_restkleur(vullingsgraad))
+
+        if sum(sizes) > 0:
+            ax.pie(
+                sizes,
+                labels=labels,
+                colors=colors,
+                autopct='%1.1f%%',
+                startangle=90
+            )
+            ax.axis('equal')
+            ax.set_title(f"Verdeling {koker_naam}")
+            st.pyplot(fig)
+        else:
+            ax.axis('off')
+            ax.text(0.5, 0.5, "Geen data", ha='center', va='center')
+            st.pyplot(fig)
