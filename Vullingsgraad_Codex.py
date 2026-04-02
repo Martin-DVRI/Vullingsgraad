@@ -313,7 +313,7 @@ def toon_vullingsmelding(koker_naam, vullingsgraad):
 # 1. KOKERS CONFIGUREREN
 # =========================
 st.markdown("---")
-st.header("1. Kokers configureren")
+st.header("1. Koker/buis configureren")
 
 num_kokers = st.number_input(
     "Selecteer het aantal kokers/buizen",
@@ -326,13 +326,13 @@ num_kokers = st.number_input(
 gekozen_kokers = []
 
 for k in range(int(num_kokers)):
-    st.markdown(f"#### Koker {k+1}")
+    st.markdown(f"#### Koker/Buis {k+1}")
 
     col1, col2 = st.columns([1.4, 2.6])
 
     with col1:
         koker_naam = st.text_input(
-            "Naam koker",
+            "Naam koker/buis",
             value=f"Koker {k+1}",
             key=f"koker_naam_{k}"
         )
@@ -361,7 +361,7 @@ st.markdown("---")
 st.header("2. Kabels invoeren")
 
 num_inputs = st.number_input(
-    "Selecteer het aantal kabeltypes in de kokers",
+    "Selecteer het aantal kabeltypes in de koker/buis",
     min_value=1,
     max_value=100,
     step=1,
@@ -387,7 +387,7 @@ with h2:
 with h3:
     st.markdown("**Diameter**")
 with h4:
-    st.markdown("**Naar koker**")
+    st.markdown("**Naar koker/buis**")
 with h5:
     st.markdown("**Naam**")
 with h6:
@@ -453,7 +453,7 @@ for i in range(int(num_inputs)):
             st.session_state[f'koker_toewijzing_{i}'] = beschikbare_kokernamen[0]
 
         st.selectbox(
-            f"Naar koker {i}",
+            f"Naar koker/buis {i}",
             beschikbare_kokernamen,
             key=f'koker_toewijzing_{i}',
             label_visibility="collapsed"
@@ -490,7 +490,7 @@ for i in range(int(num_inputs)):
 # 3. RESULTATEN PER KOKER
 # =========================
 st.markdown("---")
-st.header("3. Resultaten per koker")
+st.header("3. Resultaten per koker/buis")
 
 for koker in gekozen_kokers:
     koker_naam = koker["naam"]
@@ -528,7 +528,7 @@ for koker in gekozen_kokers:
 
         m1, m2, m3 = st.columns(3)
         with m1:
-            st.metric("Oppervlakte koker", f"{oppervlakte_koker:.0f} mm²")
+            st.metric("Oppervlakte koker/buis", f"{oppervlakte_koker:.0f} mm²")
         with m2:
             st.metric("Kabeloppervlakte", f"{totale_oppervlakte_kabels:.0f} mm²")
         with m3:
@@ -536,7 +536,7 @@ for koker in gekozen_kokers:
 
         toon_vullingsmelding(koker_naam, vullingsgraad)
 
-        st.markdown("##### Kabels in deze koker")
+        st.markdown("##### Kabels in deze koker/buis")
 
         if indices:
             th1, th2, th3 = st.columns([2.0, 3.6, 1.4])
@@ -569,41 +569,54 @@ for koker in gekozen_kokers:
                         label_visibility="collapsed"
                     )
         else:
-            st.info("Geen kabels toegewezen aan deze koker.")
+            st.info("Geen kabels toegewezen aan deze koker/buis.")
 
     with right:
-        fig, ax = plt.subplots()
+    fig, ax = plt.subplots()
 
-        if totale_oppervlakte_kabels <= oppervlakte_koker:
-            labels = kabel_namen_koker + ["Resterende ruimte"]
-            sizes = kabel_oppervlaktes_koker + [resterende_oppervlakte]
+    overvol = totale_oppervlakte_kabels >= oppervlakte_koker
+
+    if not overvol:
+        labels = kabel_namen_koker + ["Resterende ruimte"]
+        sizes = kabel_oppervlaktes_koker + [resterende_oppervlakte]
+    else:
+        labels = kabel_namen_koker
+        sizes = kabel_oppervlaktes_koker
+
+    if len(kabel_namen_koker) > 0:
+        if overvol:
+            # alles rood bij overvol
+            colors = ['#ff0000' for _ in kabel_namen_koker]
         else:
-            labels = kabel_namen_koker
-            sizes = kabel_oppervlaktes_koker
-
-        if len(kabel_namen_koker) > 0:
+            # normaal groen verloop
             colors = [
                 '#%02x%02x%02x' % (0, int(255 - 255 * j / len(kabel_namen_koker)), 0)
                 for j in range(len(kabel_namen_koker))
             ]
+    else:
+        colors = []
+
+    # Alleen restkleur toevoegen als het NIET overvol is
+    if not overvol:
+        colors.append(get_restkleur(vullingsgraad))
+
+    if sum(sizes) > 0:
+        ax.pie(
+            sizes,
+            labels=labels,
+            colors=colors,
+            autopct='%1.1f%%',
+            startangle=90
+        )
+        ax.axis('equal')
+
+        if overvol:
+            ax.set_title(f"{koker_naam} - OVERVOL", color='red')
         else:
-            colors = []
-
-        if totale_oppervlakte_kabels <= oppervlakte_koker:
-            colors.append(get_restkleur(vullingsgraad))
-
-        if sum(sizes) > 0:
-            ax.pie(
-                sizes,
-                labels=labels,
-                colors=colors,
-                autopct='%1.1f%%',
-                startangle=90
-            )
-            ax.axis('equal')
             ax.set_title(f"Verdeling {koker_naam}")
-            st.pyplot(fig)
-        else:
-            ax.axis('off')
-            ax.text(0.5, 0.5, "Geen data", ha='center', va='center')
-            st.pyplot(fig)
+
+        st.pyplot(fig)
+    else:
+        ax.axis('off')
+        ax.text(0.5, 0.5, "Geen data", ha='center', va='center')
+        st.pyplot(fig)
