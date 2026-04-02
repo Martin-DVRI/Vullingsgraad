@@ -572,51 +572,51 @@ for koker in gekozen_kokers:
             st.info("Geen kabels toegewezen aan deze koker/buis.")
 
     with right:
-    fig, ax = plt.subplots()
-
-    overvol = totale_oppervlakte_kabels >= oppervlakte_koker
-
-    if not overvol:
-        labels = kabel_namen_koker + ["Resterende ruimte"]
-        sizes = kabel_oppervlaktes_koker + [resterende_oppervlakte]
-    else:
-        labels = kabel_namen_koker
-        sizes = kabel_oppervlaktes_koker
-
-    if len(kabel_namen_koker) > 0:
-        if overvol:
-            # alles rood bij overvol
-            colors = ['#ff0000' for _ in kabel_namen_koker]
+        fig, ax = plt.subplots()
+    
+        overvol = totale_oppervlakte_kabels >= oppervlakte_koker
+    
+        if not overvol:
+            labels = kabel_namen_koker + ["Resterende ruimte"]
+            sizes = kabel_oppervlaktes_koker + [resterende_oppervlakte]
         else:
-            # normaal groen verloop
-            colors = [
-                '#%02x%02x%02x' % (0, int(255 - 255 * j / len(kabel_namen_koker)), 0)
-                for j in range(len(kabel_namen_koker))
-            ]
-    else:
-        colors = []
-
-    # Alleen restkleur toevoegen als het NIET overvol is
-    if not overvol:
-        colors.append(get_restkleur(vullingsgraad))
-
-    if sum(sizes) > 0:
-        ax.pie(
-            sizes,
-            labels=labels,
-            colors=colors,
-            autopct='%1.1f%%',
-            startangle=90
-        )
-        ax.axis('equal')
-
-        if overvol:
-            ax.set_title(f"{koker_naam} - OVERVOL", color='red')
+            labels = kabel_namen_koker
+            sizes = kabel_oppervlaktes_koker
+    
+        if len(kabel_namen_koker) > 0:
+            if overvol:
+                # alles rood bij overvol
+                colors = ['#ff0000' for _ in kabel_namen_koker]
+            else:
+                # normaal groen verloop
+                colors = [
+                    '#%02x%02x%02x' % (0, int(255 - 255 * j / len(kabel_namen_koker)), 0)
+                    for j in range(len(kabel_namen_koker))
+                ]
         else:
-            ax.set_title(f"Verdeling {koker_naam}")
-
-        st.pyplot(fig)
-    else:
-        ax.axis('off')
-        ax.text(0.5, 0.5, "Geen data", ha='center', va='center')
-        st.pyplot(fig)
+            colors = []
+    
+        # Alleen restkleur toevoegen als het NIET overvol is
+        if not overvol:
+            colors.append(get_restkleur(vullingsgraad))
+    
+        if sum(sizes) > 0:
+            ax.pie(
+                sizes,
+                labels=labels,
+                colors=colors,
+                autopct='%1.1f%%',
+                startangle=90
+            )
+            ax.axis('equal')
+    
+            if overvol:
+                ax.set_title(f"{koker_naam} - OVERVOL", color='red')
+            else:
+                ax.set_title(f"Verdeling {koker_naam}")
+    
+            st.pyplot(fig)
+        else:
+            ax.axis('off')
+            ax.text(0.5, 0.5, "Geen data", ha='center', va='center')
+            st.pyplot(fig)
