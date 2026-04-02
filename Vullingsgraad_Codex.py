@@ -333,7 +333,7 @@ for k in range(int(num_kokers)):
     with col1:
         koker_naam = st.text_input(
             "Naam koker/buis",
-            value=f"Koker {k+1}",
+            value=f"Koker/buis {k+1}",
             key=f"koker_naam_{k}"
         )
 
